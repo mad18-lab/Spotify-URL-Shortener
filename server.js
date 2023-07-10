@@ -1,12 +1,15 @@
 const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose');
-const validUrl = require('valid-url');
-const shortid = require('shortid');
+const bodyParser = require('body-parser');
+const shortId = require('shortid');
+const ejs = require('ejs');
 
 const app = express();
 
 app.use(express.json());
+app.use(bodyParser.urlencoded({extended: false}));
+app.set('view engine', 'ejs');
 
 mongoose.connect("mongodb+srv://admin:admin1234@urls.oeha3fm.mongodb.net/")
 .then(() => {
@@ -20,13 +23,9 @@ app.listen(4008, () => {
 })
 
 const urlSchema = {
-    urlCode: String,
-    longUrl: String,
-    shortUrl: String,
-    date: {
-        type: String,
-        required: Date.now
-    }
+    shortURL: String,
+    longURL: String,
+    id: String
 }
 
 const Model = mongoose.model("Model", urlSchema);
@@ -35,44 +34,29 @@ app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname + "/homepage.html"));
 })
 
-const baseUrl = 'http:localhost:4008'
+const baseUrl = 'http://localhost:4008';
 
 app.post("/result", (req, res) => {
-    const { longUrl } = req.body.url;
+    const longUrl = req.body.url;
+    const id = shortId.generate();
 
-    if (!validUrl.isUri(baseUrl)) {
-        return res.status(401).json('Invalid base URL');
-    }
+    const result = baseUrl + '/' + id;
 
-    const urlCode = shortid.generate();
+    res.render('output', {
+        url: result
+    })
 
-    if (validUrl.isUri(longUrl)) {
-        try {
-            const url = Model.findOne({ longUrl });
-            if (url) {
-                res.render('output', {
-                    url: url
-                })
-            } else {
-                const shortUrl = baseUrl + '/' + urlCode;
+    const saving = new Model({
+        shortURL: result,
+        longURL: longUrl,
+        id: id
+    })
+    saving.save();
+});
 
-                url = new url({
-                    longUrl,
-                    shortUrl,
-                    urlCode,
-                    date: new Date()
-                })
-
-                url.save();
-                res.render('output', {
-                    url: url
-                })
-            }
-        } catch(err) {
-            console.log(err);
-            res.status(400).json(err);
-        }
-    } else {
-        res.send("Invalid URL");
-    }
-})
+app.get("/:id", (req, res) => {
+    const id = req.params.id;
+    const url = Model.findOne({ id: id }).then(() => {
+        res.redirect(url.longURL);
+    })
+});
