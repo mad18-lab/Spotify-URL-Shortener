@@ -7,11 +7,11 @@ const ejs = require('ejs');
 
 const app = express();
 
-app.use(express.json());
-app.use(bodyParser.urlencoded({extended: false}));
+app.use(express.json({extended: false}));
+app.use(bodyParser.urlencoded({extended: true}));
 app.set('view engine', 'ejs');
 
-mongoose.connect("mongodb+srv://admin:admin1234@urls.oeha3fm.mongodb.net/")
+mongoose.connect("mongodb+srv://admin:admin1234@urls.oeha3fm.mongodb.net/", {useNewUrlParser: true}, {useUnifiedTopology: true})
 .then(() => {
     console.log("Database is connected.");
 }).catch((err) => {
@@ -25,7 +25,11 @@ app.listen(4008, () => {
 const urlSchema = {
     shortURL: String,
     longURL: String,
-    id: String
+    id: String,
+    date: {
+        type: String,
+        default: Date.now
+    }
 }
 
 const Model = mongoose.model("Model", urlSchema);
@@ -49,14 +53,21 @@ app.post("/result", (req, res) => {
     const saving = new Model({
         shortURL: result,
         longURL: longUrl,
-        id: id
+        id: id,
+        date: new Date()
     })
     saving.save();
 });
 
-app.get("/:id", (req, res) => {
-    const id = req.params.id;
-    const url = Model.findOne({ id: id }).then(() => {
-        res.redirect(url.longURL);
-    })
+app.get("/:id", async(req, res) => {
+    const url = await Model.findOne({id: req.params.id});
+
+    if (url) {
+        console.log("Original link found. Redirecting...");
+        return res.redirect(url.longURL);
+    }
+    else {
+        console.log("Error generated.");
+        res.status(400).send("Error Generated.");
+    }
 });
