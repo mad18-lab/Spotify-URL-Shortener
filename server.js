@@ -25,11 +25,7 @@ app.listen(4008, () => {
 const urlSchema = {
     shortURL: String,
     longURL: String,
-    id: String,
-    date: {
-        type: String,
-        default: Date.now
-    }
+    id: String
 }
 
 const Model = mongoose.model("Model", urlSchema);
@@ -53,8 +49,7 @@ app.post("/result", (req, res) => {
     const saving = new Model({
         shortURL: result,
         longURL: longUrl,
-        id: id,
-        date: new Date()
+        id: id
     })
     saving.save();
 });
